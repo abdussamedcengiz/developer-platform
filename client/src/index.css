@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* Tailwind 4'te dark mode varsayilan olarak isletim sisteminin
+   tercihine (prefers-color-scheme) bakar. Biz butonla degistirmek
+   istedigimiz icin bunu SINIF tabanli hale getiriyoruz:
+   <html class="dark"> varsa dark: onekli siniflar devreye girer. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Tarayiciya hangi temada oldugumuzu soyler.
+     Scroll bar, form elemanlari gibi yerlesik parcalar buna gore boyanir. */
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  line-height: 1.6;
+
+  /* Yaziyi biraz daha ince ve net gosterir. Kucuk detay, buyuk fark. */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- TEKRAR EDEN KALIPLAR ---
+   Utility-first yaklasimin istisnasi.
+   Ayni 15 sinifli form kutusu 3 dosyada, 12 kez tekrarlaniyordu;
+   dark: varyantlariyla birlikte satirlar okunamaz hale gelmisti.
+   @apply ile bir kez tanimlayip isim veriyoruz.
+
+   Kural: bunu ERKEN yapma. Once utility yaz, tekrar GORUNUR hale
+   gelince cikar. Aksi halde CSS dosyasi yine sismis olur --
+   Tailwind'den kacmaya calistigin duruma geri donersin. */
+@layer components {
+  .form-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .form-input {
+    @apply mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 transition
+      placeholder:text-slate-400
+      focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none
+      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition
+      hover:bg-slate-700 disabled:opacity-50
+      dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium transition
+      hover:bg-slate-50 disabled:opacity-50
+      dark:border-slate-700 dark:hover:bg-slate-800;
+  }
+
+  .alert-error {
+    @apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700
+      dark:bg-red-500/10 dark:text-red-400;
+  }
+}

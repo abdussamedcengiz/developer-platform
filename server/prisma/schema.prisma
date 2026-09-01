@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  slug      String   @unique
+  content   String
+  excerpt   String?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Iliskinin Post tarafi.
+  // author   -> kodda kullandigin kolaylik (gercek sutun DEGIL)
+  // authorId -> database'de gercekten olusan foreign key sutunu
+  // Simdilik opsiyonel (?), cunku henuz kullanici sistemi yok.
+  author   User?   @relation(fields: [authorId], references: [id])
+  authorId String?
+}
+
+model Project {
+  id          Int    @id @default(autoincrement())
+  title       String
+  slug        String @unique
+  description String
+
+  // Uc adres de opsiyonel: her projenin gorseli, deposu
+  // veya canli demosu olmak zorunda degil.
+  imageUrl  String?
+  githubUrl String?
+  demoUrl   String?
+
+  // Ana sayfada one cikarilacak projeler icin.
+  featured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

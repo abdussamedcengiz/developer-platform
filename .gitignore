@@ -1,0 +1,32 @@
+# Bağımlılıklar — asla git'e girmez, `npm install` ile yeniden üretilir
+node_modules/
+
+# Ortam değişkenleri — şifre ve gizli anahtar içerir, ASLA git'e girmez
+.env
+.env.local
+.env.*.local
+
+# Build çıktıları — kaynak koddan üretilir, saklamaya gerek yok
+dist/
+build/
+
+# Loglar
+*.log
+npm-debug.log*
+
+# Editör / işletim sistemi
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Editör / AI araç klasörleri — projeye ait değil, makineye ait
+.agents/
+.claude/
+.windsurf/
+.cursor/
+skills-lock.json
+
+# Prisma'nın ürettiği istemci kodu — schema.prisma'dan yeniden üretilir
+src/generated/

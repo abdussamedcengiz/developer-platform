@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abdüssamed Cengiz — Yazılım Mühendisi</title>
+    <meta
+      name="description"
+      content="Yazılım mühendisi. TypeScript, React, React Native ve Node.js ile web ve mobil uygulamalar geliştiriyorum. Projelerim ve yazılarım."
+    />
+
+    <!-- Open Graph: baglanti WhatsApp, LinkedIn, X gibi yerlerde
+         paylasilinca gosterilecek onizleme bilgileri. -->
+    <meta property="og:title" content="Abdüssamed Cengiz — Yazılım Mühendisi" />
+    <meta
+      property="og:description"
+      content="TypeScript, React, React Native ve Node.js ile web ve mobil uygulamalar."
+    />
+    <meta property="og:type" content="website" />
+
+    <!--
+      FOUC (Flash of Unstyled Content) onleme.
+
+      React yuklenmesi birkac yuz milisaniye surer. O sure boyunca
+      sayfa BEYAZ olur; koyu tema kullanicisi her yenilemede
+      goz alici bir beyaz parlama gorur.
+
+      Bu script React'ten ONCE, senkron calisir ve dogru sinifi
+      hemen ekler. Tema mantiginin tek yerde olmamasi bir odun,
+      ama karsiliginda kullanici deneyimi duzeliyor.
+    -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("dp_theme");
+          var prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+          if (saved === "dark" || (!saved && prefersDark)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {
+          /* localStorage kapaliysa sessizce gec */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <!-- React'in icini dolduracagi tek kutu. -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
