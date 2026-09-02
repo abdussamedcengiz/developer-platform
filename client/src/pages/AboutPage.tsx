@@ -139,9 +139,9 @@ function AboutPage() {
           {/* Mobilde alt alta, sm'den itibaren yan yana.
               Tarih sagda: goz once role, sonra tarihe gidiyor. */}
           <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-baseline">
-            <h3 className="font-semibold">Full Stack Developer</h3>
+            <h3 className="font-semibold">Full Stack Developer — Staj</h3>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              Tem 2024 – Eki 2024
+              Tem – Eki 2024 · 40 iş günü
             </span>
           </div>
 
@@ -150,6 +150,14 @@ function AboutPage() {
           </p>
 
           <ul className="mt-3 space-y-1.5 text-slate-600 dark:text-slate-300">
+            <li className="flex gap-3">
+              <span className="text-slate-400 dark:text-slate-600">—</span>
+              <span>
+                Ödeme geçidi entegrasyonunu uçtan uca geliştirdim: kullanıcıların
+                uygulama üzerinden güvenli şekilde ödeme yapmasını sağlayan
+                backend ve frontend akışı
+              </span>
+            </li>
             <li className="flex gap-3">
               <span className="text-slate-400 dark:text-slate-600">—</span>
               <span>
@@ -174,8 +182,8 @@ function AboutPage() {
             <li className="flex gap-3">
               <span className="text-slate-400 dark:text-slate-600">—</span>
               <span>
-                İzleme ve optimizasyon araçları entegre ederek uygulama hızını
-                ve güvenilirliğini artırdım
+                Takım içinde API geliştirme, hata ayıklama ve test süreçlerinde
+                görev aldım
               </span>
             </li>
           </ul>
