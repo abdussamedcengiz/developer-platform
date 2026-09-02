@@ -249,14 +249,25 @@ function AboutPage() {
         {/* public/ klasorundeki dosyalar site kokunden servis edilir:
             public/cv.pdf  ->  /cv.pdf
             Vite bu dosyalari islemez, oldugu gibi kopyalar. */}
-        <a
-          href="/cv.pdf"
-          target="_blank"
-          rel="noreferrer"
-          className="btn-secondary mt-6 inline-block"
-        >
-          CV'yi indir (PDF)
-        </a>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/cv.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary inline-block"
+          >
+            CV (Türkçe)
+          </a>
+
+          <a
+            href="/cv-en.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary inline-block"
+          >
+            CV (English)
+          </a>
+        </div>
       </section>
     </div>
   );
