@@ -84,6 +84,17 @@ const projects = [
     featured: false,
   },
   {
+    title: "Depo ve Stok Takip Sistemi",
+    slug: "depo-stok-takip",
+    description:
+      "Kişisel proje: stok ve depo takibi yapan, güvenli kimlik doğrulama içeren uygulama.",
+    // TODO: GitHub'da repo varsa adresini ekle
+    githubUrl: null,
+    demoUrl: null,
+    imageUrl: null,
+    featured: false,
+  },
+  {
     title: "Template Matching",
     slug: "template-matching",
     description:

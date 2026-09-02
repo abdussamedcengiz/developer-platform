@@ -11,6 +11,7 @@ const skills = [
       "TypeScript",
       "JavaScript (ES6+)",
       "Tailwind CSS",
+      "Bootstrap",
       "HTML / CSS",
       "Vite",
     ],
@@ -24,8 +25,17 @@ const skills = [
     items: ["PostgreSQL", "MySQL", "Prisma ORM", "PDO", "SQL"],
   },
   {
-    category: "Araçlar",
-    items: ["Git", "GitHub", "npm", "Postman", "Algoritma & Veri Yapıları"],
+    category: "Araçlar & Yöntemler",
+    items: [
+      "Git",
+      "GitHub",
+      "Docker",
+      "npm",
+      "Postman",
+      "Agile / Scrum",
+      "CI/CD",
+      "Algoritma & Veri Yapıları",
+    ],
   },
 ];
 
@@ -39,6 +49,9 @@ const learning = [
   "PyTorch",
   "RAG & Vektör Veritabanları",
   "Görüntü İşleme",
+  "Kubernetes",
+  "Prometheus",
+  "Grafana",
 ];
 
 const contact = {
@@ -133,13 +146,39 @@ function AboutPage() {
           </div>
 
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            EABİLİŞİM · İzmir
+            EA Telekomünikasyon Bilişim Teknolojileri · İzmir
           </p>
 
-          <p className="mt-3 text-slate-600 dark:text-slate-300">
-            Web uygulamalarının hem arayüz hem sunucu tarafında geliştirme
-            yaptım. PHP/Laravel ve JavaScript ile takım içinde çalıştım.
-          </p>
+          <ul className="mt-3 space-y-1.5 text-slate-600 dark:text-slate-300">
+            <li className="flex gap-3">
+              <span className="text-slate-400 dark:text-slate-600">—</span>
+              <span>
+                React Native ve Expo ile iOS ve Android için çapraz platform
+                mobil uygulamalar geliştirdim
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-slate-400 dark:text-slate-600">—</span>
+              <span>
+                Laravel ve PHP ile ölçeklenebilir web uygulamaları geliştirdim;
+                veritabanı yönetiminde PDO ve MySQL kullandım
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-slate-400 dark:text-slate-600">—</span>
+              <span>
+                Gerçek zamanlı veri işleyen Node.js API'leri yazarak sistem
+                performansını iyileştirdim
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-slate-400 dark:text-slate-600">—</span>
+              <span>
+                İzleme ve optimizasyon araçları entegre ederek uygulama hızını
+                ve güvenilirliğini artırdım
+              </span>
+            </li>
+          </ul>
         </div>
       </section>
 
@@ -151,7 +190,7 @@ function AboutPage() {
           <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-baseline">
             <h3 className="font-semibold">Yazılım Mühendisliği, Lisans</h3>
             <span className="text-sm text-slate-500 dark:text-slate-400">
-              2021 – 2025
+              Eyl 2021 – Haz 2025
             </span>
           </div>
 
