@@ -148,11 +148,25 @@ ikincisi devreye girer. Bu kural olmadan `/projects` adresini doğrudan açmak
 `server/npm run build` içinde `prisma migrate deploy` var; **tablolar ilk
 deploy'da otomatik oluşur.** Geriye başlangıç verisi kalıyor.
 
-Render panelinde **api servisi → Shell** sekmesini aç:
+Seed'i **kendi makinenden**, Neon veritabanına bağlanarak çalıştır:
 
-```bash
-SEED_ADMIN_PASSWORD='guclu-bir-sifre' npx prisma db seed
+```powershell
+cd server
+$env:DATABASE_URL="postgresql://...neon.tech/...?sslmode=require"
+$env:SEED_ADMIN_PASSWORD="guclu-bir-sifre"
+npx prisma db seed
+
+Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_PASSWORD   # temizle
 ```
+
+> **Neden Render Shell değil?** Shell sekmesi ücretli planlarda açık;
+> free instance'ta yok. Gerek de yok — Neon internete açık olduğu için
+> yerelden bağlanmak aynı işi görüyor.
+>
+> `dotenv` mevcut ortam değişkenlerinin **üzerine yazmaz**, o yüzden
+> yukarıdaki `$env:DATABASE_URL` yereldeki `.env` değerini geçersiz kılar
+> ve seed doğru veritabanına gider. Bitince temizlemeyi unutma, yoksa
+> aynı terminalde çalıştıracağın `npm run dev` de canlı veritabanına bağlanır.
 
 Seed **idempotent**: `upsert` kullanıyor, kaç kez çalıştırırsan çalıştır
 aynı sonucu verir, veri çoğaltmaz.
