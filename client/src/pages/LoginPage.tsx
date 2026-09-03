@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Container from "../components/Container";
 
 function LoginPage() {
   // CONTROLLED INPUTS: kutularin degeri DOM'da degil, state'te tutulur.
@@ -41,51 +42,96 @@ function LoginPage() {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="text-3xl font-bold tracking-tight">Giriş</h1>
+    <Container size="sm" className="py-8">
+      <div className="animate-fade-up">
+        <div className="text-center">
+          <div
+            aria-hidden="true"
+            className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white dark:bg-slate-100 dark:text-slate-900"
+          >
+            AC
+          </div>
 
-      {error && <p className="mt-6 alert-error">{error}</p>}
-
-      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-        <div>
-          {/* htmlFor + id eslesir: etikete tiklayinca kutu odaklanir */}
-          <label htmlFor="email" className="form-label">
-            E-posta
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="form-input"
-          />
+          <h1 className="mt-5 text-2xl font-bold tracking-tight">
+            Yönetim paneli
+          </h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Bu alan siteyi yöneten kişiye ait. Devam etmek için giriş yap.
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="password" className="form-label">
-            Şifre
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            // Tarayicinin sifre yoneticisi bu attribute'a bakar.
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="form-input"
-          />
-        </div>
+        <div className="card mt-8 p-6">
+          {/* role="alert": hata mesaji ekrana gelince ekran okuyucu
+              onu ANINDA duyurur. Kullanici odakta olmasa bile duyar. */}
+          {error && (
+            <p role="alert" className="alert-error mb-5">
+              {error}
+            </p>
+          )}
 
-        <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
-        </button>
-      </form>
-    </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              {/* htmlFor + id eslesir: etikete tiklayinca kutu odaklanir */}
+              <label htmlFor="email" className="form-label">
+                E-posta
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                // autoFocus: bu sayfanin TEK isi giris yapmak.
+                // Kullaniciya bir Tab tusu tasarrufu.
+                autoFocus
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ornek@eposta.com"
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="form-label">
+                Şifre
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                // Tarayicinin sifre yoneticisi bu attribute'a bakar.
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="form-input"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full"
+            >
+              {loading ? (
+                <>
+                  {/* Donen halka: butonun beklendigini gosterir.
+                      Sadece metin degistirmek yeterince belirgin degil. */}
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  />
+                  Giriş yapılıyor...
+                </>
+              ) : (
+                "Giriş Yap"
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    </Container>
   );
 }
 

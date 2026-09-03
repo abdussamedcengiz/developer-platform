@@ -12,6 +12,23 @@ import { TOKEN_KEY } from "../constants";
 // yoksa sunucudaki gizli anahtarlar tarayiciya sizardi.
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
+// SESSIZ HATAYA KARSI UYARI
+//
+// Canli build'de VITE_API_URL unutulursa API_BASE bos kalir ve
+// her istek arayuzun kendi adresine gider -- orada API yok, hepsi
+// 404 doner. Sayfa "yuklenemedi" der ama NEDENINI soylemez;
+// bu hatayi aramak saatler alabilir.
+//
+// import.meta.env.PROD: Vite'in production build isareti.
+// Gelistirmede uyari cikmaz, cunku orada bos deger DOGRU olan.
+if (import.meta.env.PROD && !API_BASE) {
+  console.error(
+    "[api] VITE_API_URL tanimli degil. Canli build'de API adresi " +
+      "paketin icine gomulur; Render'da bu degiskeni ayarlayip " +
+      "arayuzu YENIDEN deploy etmelisin.",
+  );
+}
+
 // TEK GIRIS NOKTASI
 // Hicbir component dogrudan fetch cagirmaz. Her istekte tekrarlanan
 // isler (token, Content-Type, hata kontrolu) burada bir kez yazilir.

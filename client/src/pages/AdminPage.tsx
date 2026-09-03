@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import Container from "../components/Container";
+import EmptyState from "../components/EmptyState";
+import { SkeletonList } from "../components/Skeleton";
+import { PlusIcon, DocumentIcon } from "../components/Icons";
+import { formatDateShort } from "../utils/format";
 import type { Post } from "../types/post";
 
 function AdminPage() {
@@ -52,81 +57,134 @@ function AdminPage() {
     }
   }
 
-  if (loading) {
-    return <p className="text-slate-500 dark:text-slate-400">Yükleniyor...</p>;
-  }
+  const published = posts.filter((p) => p.published).length;
 
   return (
-    <div>
+    <Container>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Yazılar</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="page-title">Yazılar</h1>
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
             {user?.email}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link to="/admin/projects" className="btn-secondary">
             Projeler
           </Link>
           <Link to="/admin/posts/new" className="btn-primary">
+            <PlusIcon className="h-4 w-4" />
             Yeni Yazı
           </Link>
         </div>
       </div>
 
-      {error && <p className="mt-6 alert-error">{error}</p>}
-
-      {posts.length === 0 ? (
-        <p className="mt-10 text-slate-500 dark:text-slate-400">
-          Henüz yazı yok.
-        </p>
-      ) : (
-        <ul className="mt-10 divide-y divide-slate-200 dark:divide-slate-800">
-          {posts.map((post) => (
-            <li
-              key={post.id}
-              className="flex flex-wrap items-center justify-between gap-3 py-4"
-            >
-              <div>
-                <p className="font-medium">{post.title}</p>
-                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  <span
-                    className={
-                      post.published
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-amber-600 dark:text-amber-400"
-                    }
-                  >
-                    {post.published ? "Yayında" : "Taslak"}
-                  </span>
-                  {" · "}
-                  {new Date(post.createdAt).toLocaleDateString("tr-TR")}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 text-sm">
-                <Link
-                  to={`/admin/posts/${post.slug}/edit`}
-                  className="text-blue-600 transition hover:underline dark:text-blue-400"
-                >
-                  Düzenle
-                </Link>
-
-                <button
-                  onClick={() => handleDelete(post.slug, post.title)}
-                  disabled={deletingSlug === post.slug}
-                  className="text-red-600 transition hover:underline disabled:opacity-50 dark:text-red-400"
-                >
-                  {deletingSlug === post.slug ? "Siliniyor..." : "Sil"}
-                </button>
-              </div>
-            </li>
+      {/* --- OZET ---
+          Panele girer girmez "kac yazim var, kaci yayinda"
+          sorusunun cevabi gorunsun. */}
+      {!loading && !error && posts.length > 0 && (
+        <dl className="mt-8 grid grid-cols-3 gap-3">
+          {[
+            { label: "Toplam", value: posts.length },
+            { label: "Yayında", value: published },
+            { label: "Taslak", value: posts.length - published },
+          ].map((stat) => (
+            <div key={stat.label} className="card px-4 py-3">
+              <dt className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                {stat.label}
+              </dt>
+              <dd className="mt-1 font-mono text-2xl font-bold tracking-tight">
+                {stat.value}
+              </dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       )}
-    </div>
+
+      {error && (
+        <p role="alert" className="alert-error mt-6">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-8">
+        {loading ? (
+          <SkeletonList variant="row" count={4} />
+        ) : posts.length === 0 ? (
+          <EmptyState
+            icon={<DocumentIcon className="h-5 w-5" />}
+            title="Henüz yazı yok"
+            description="İlk yazını ekleyerek başla."
+            action={
+              <Link to="/admin/posts/new" className="btn-primary">
+                <PlusIcon className="h-4 w-4" />
+                Yeni Yazı
+              </Link>
+            }
+          />
+        ) : (
+          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            {posts.map((post) => (
+              <li
+                key={post.id}
+                className="group flex flex-wrap items-center justify-between gap-3 py-4"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{post.title}</p>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+                    <span
+                      className={
+                        post.published ? "badge-emerald" : "badge-amber"
+                      }
+                    >
+                      {post.published ? "Yayında" : "Taslak"}
+                    </span>
+
+                    <span className="font-mono text-xs">
+                      {formatDateShort(post.createdAt)}
+                    </span>
+
+                    <span className="truncate font-mono text-xs text-slate-400 dark:text-slate-600">
+                      /{post.slug}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  {/* Yayindaki yazi icin "Gor" baglantisi: yazar
+                      duzenledigi seyin okurdaki halini gorebilsin. */}
+                  {post.published && (
+                    <Link
+                      to={`/blog/${post.slug}`}
+                      className="btn-ghost !px-3 !py-1.5"
+                    >
+                      Gör
+                    </Link>
+                  )}
+
+                  <Link
+                    to={`/admin/posts/${post.slug}/edit`}
+                    className="btn-ghost !px-3 !py-1.5"
+                  >
+                    Düzenle
+                  </Link>
+
+                  <button
+                    onClick={() => handleDelete(post.slug, post.title)}
+                    disabled={deletingSlug === post.slug}
+                    className="btn-danger !px-3 !py-1.5"
+                  >
+                    {deletingSlug === post.slug ? "Siliniyor..." : "Sil"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Container>
   );
 }
 

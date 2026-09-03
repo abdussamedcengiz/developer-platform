@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Yonetim paneli arama motorlarinda gorunmesin.
+Disallow: /admin
+Disallow: /login

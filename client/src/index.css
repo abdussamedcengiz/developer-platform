@@ -6,14 +6,86 @@
    <html class="dark"> varsa dark: onekli siniflar devreye girer. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* --- TASARIM JETONLARI ---
+   Tailwind 4'te @theme icinde tanimlanan her degisken AYNI ZAMANDA
+   bir utility uretir: --color-accent-600 -> text-accent-600, bg-accent-600.
+   Renk ve font secimini tek yerde toplamak, sonradan marka rengini
+   degistirmeyi 40 dosya yerine tek blok haline getirir. */
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo,
+    monospace;
+
+  /* Vurgu rengi. oklch: acikligi (L) sabit tutup ton degistirince
+     renkler ALGISAL olarak esit parlaklikta kalir -- hex ile ayni
+     dengeyi tutturmak elle ayar gerektirir. */
+  --color-accent-50: oklch(0.97 0.014 254);
+  --color-accent-100: oklch(0.93 0.032 254);
+  --color-accent-200: oklch(0.88 0.06 254);
+  --color-accent-300: oklch(0.8 0.1 254);
+  --color-accent-400: oklch(0.71 0.15 254);
+  --color-accent-500: oklch(0.63 0.19 254);
+  --color-accent-600: oklch(0.55 0.21 254);
+  --color-accent-700: oklch(0.48 0.19 254);
+  --color-accent-800: oklch(0.4 0.15 254);
+  --color-accent-900: oklch(0.34 0.11 254);
+  --color-accent-950: oklch(0.24 0.08 254);
+
+  /* Sayfa girisinde kullanilan yumusak yukselme animasyonu. */
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+}
+
 :root {
   /* Tarayiciya hangi temada oldugumuzu soyler.
      Scroll bar, form elemanlari gibi yerlesik parcalar buna gore boyanir. */
   color-scheme: light;
+
+  /* Tailwind utility'siyle ifade edilemeyen yerlerde (::selection,
+     scrollbar, izgara dokusu) kullandigimiz yuzey renkleri. */
+  --surface: oklch(1 0 0);
+  --surface-muted: oklch(0.985 0.002 250);
+  --border-subtle: oklch(0.92 0.004 250);
 }
 
 .dark {
   color-scheme: dark;
+
+  --surface: oklch(0.16 0.012 258);
+  --surface-muted: oklch(0.2 0.014 258);
+  --border-subtle: oklch(0.28 0.016 258);
 }
 
 * {
@@ -22,20 +94,72 @@
 
 html {
   scroll-behavior: smooth;
+
+  /* Sticky navbar, kaydirilan basligi ustten kesmesin. */
+  scroll-padding-top: 5rem;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  line-height: 1.65;
 
   /* Yaziyi biraz daha ince ve net gosterir. Kucuk detay, buyuk fark. */
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: color-mix(
+    in oklch,
+    var(--color-accent-500) 25%,
+    transparent
+  );
+}
+
+/* Ince scrollbar: sayfanin geri kalanindaki sadelikle uyumlu.
+   Firefox ve WebKit ayri sozdizimi istiyor. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-subtle);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+/* ERISILEBILIRLIK: klavye ile gezinen kullanici nerede oldugunu
+   gorebilmeli. :focus yerine :focus-visible -- fare tiklamasinda
+   halka cikmaz, sadece klavye kullaniminda cikar. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Hareket hassasiyeti olan kullanicilar icin animasyonlari kapat.
+   Bu bir suslemenin degil, WCAG 2.3.3'un geregi. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* --- TEKRAR EDEN KALIPLAR ---
@@ -46,33 +170,155 @@ body {
 
    Kural: bunu ERKEN yapma. Once utility yaz, tekrar GORUNUR hale
    gelince cikar. Aksi halde CSS dosyasi yine sismis olur --
-   Tailwind'den kacmaya calistigin duruma geri donersin. */
+   Tailwind kullanmaktan kacmaya calistigin duruma geri donersin. */
+/* --- TABAN UTILITY'LERI ---
+   btn ve card, asagidaki varyantlarin uzerine kuruldugu TABAN.
+   Neden @layer components degil de @utility?
+   Tailwind 4'te @apply yalnizca UTILITY'leri kabul eder. @layer
+   components icinde tanimlanan bir sinifi baska bir kuralda
+   @apply edemezsin -- "Cannot apply unknown utility class" hatasi
+   tam olarak budur. @utility ile tanimlayinca gercek bir utility
+   olur ve @apply zinciri calisir. */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium
+    transition duration-200 select-none
+    disabled:pointer-events-none disabled:opacity-50;
+}
+
+@utility card {
+  @apply rounded-2xl border border-slate-200 bg-white
+    dark:border-slate-800 dark:bg-slate-900/40;
+}
+
 @layer components {
+  /* --- FORM --- */
   .form-label {
     @apply block text-sm font-medium text-slate-700 dark:text-slate-300;
   }
 
   .form-input {
-    @apply mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 transition
+    @apply mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 transition
       placeholder:text-slate-400
-      focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none
-      dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+      focus:border-accent-500 focus:ring-4 focus:ring-accent-500/15 focus:outline-none
+      dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500;
   }
 
+  .form-hint {
+    @apply mt-1.5 text-xs text-slate-500 dark:text-slate-400;
+  }
+
+  /* --- BUTONLAR ---
+     Uc seviye: birincil (sayfanin tek ana eylemi), ikincil (alternatif),
+     sessiz (uculuncul). Hepsi taban "btn" olcusunu paylasir ki
+     yan yana geldiklerinde tabanlari hizalansin. */
   .btn-primary {
-    @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition
-      hover:bg-slate-700 disabled:opacity-50
+    @apply btn bg-slate-900 text-white shadow-sm
+      hover:bg-slate-700 hover:shadow-md active:scale-[0.98]
       dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white;
   }
 
   .btn-secondary {
-    @apply rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium transition
-      hover:bg-slate-50 disabled:opacity-50
-      dark:border-slate-700 dark:hover:bg-slate-800;
+    @apply btn border border-slate-300 bg-white text-slate-800
+      hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98]
+      dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200
+      dark:hover:border-slate-600 dark:hover:bg-slate-800;
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900
+      dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100;
+  }
+
+  .btn-danger {
+    @apply btn text-red-600 hover:bg-red-50
+      dark:text-red-400 dark:hover:bg-red-500/10;
+  }
+
+  /* --- YUZEYLER --- */
+  .card-hover {
+    @apply card transition duration-300
+      hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5
+      dark:hover:border-slate-700 dark:hover:shadow-black/30;
+  }
+
+  /* --- ROZET / ETIKET --- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50
+      px-2.5 py-1 text-xs font-medium text-slate-700
+      dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300;
+  }
+
+  .badge-accent {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-accent-50 px-2.5 py-1
+      text-xs font-medium text-accent-700
+      dark:bg-accent-500/10 dark:text-accent-300;
+  }
+
+  .badge-amber {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1
+      text-xs font-medium text-amber-800
+      dark:bg-amber-500/15 dark:text-amber-400;
+  }
+
+  .badge-emerald {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1
+      text-xs font-medium text-emerald-800
+      dark:bg-emerald-500/15 dark:text-emerald-400;
   }
 
   .alert-error {
-    @apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700
-      dark:bg-red-500/10 dark:text-red-400;
+    @apply rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700
+      dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400;
   }
+
+  /* --- BASLIKLAR ---
+     Sayfa basliklarinin boyutu tek yerden yonetilsin ki
+     sayfalar arasindaki hiyerarsi kaymasin. */
+  .page-title {
+    @apply text-3xl font-bold tracking-tight text-balance sm:text-4xl;
+  }
+
+  .section-title {
+    @apply text-xl font-bold tracking-tight;
+  }
+
+  /* --- ISKELET (SKELETON) ---
+     Yuklenirken "Yukleniyor..." yazmak yerine icerigin SEKLINI
+     gostermek beklemeyi kisa hissettirir; ayrica veri gelince
+     sayfa zipla-kay yapmaz. */
+  .skeleton {
+    @apply rounded-lg bg-slate-200/70 dark:bg-slate-800/70;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, var(--surface) 60%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  /* --- YAZI GOVDESI ---
+     Blog icerigi icin okunabilir olcu ve ritim. */
+  .prose-body {
+    @apply text-[1.0625rem] leading-[1.8] text-slate-700 dark:text-slate-300;
+  }
+}
+
+/* --- OZEL UTILITY'LER ---
+   @utility: Tailwind 4'un @layer utilities karsiligi.
+   Varyantlarla (hover:, dark:, sm:) birlikte calisir. */
+@utility link-underline {
+  @apply text-accent-600 underline decoration-accent-600/30 underline-offset-4
+    transition hover:decoration-accent-600
+    dark:text-accent-400 dark:decoration-accent-400/30 dark:hover:decoration-accent-400;
+}
+
+/* Hero arkasindaki ince izgara dokusu. Tamamen dekoratif:
+   iceriksiz, aria-hidden bir katmanda kullanilir. */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
