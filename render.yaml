@@ -1,0 +1,107 @@
+# RENDER BLUEPRINT
+#
+# Bu tek dosya iki servisi de tanimlar: API ve arayuz.
+# Render'da "New +" -> "Blueprint" -> bu depoyu sec dediginde
+# Render bu dosyayi okuyup her ikisini birden olusturur.
+#
+# Neden panelden elle kurmak yerine dosya?
+#   - Ayarlar git'te durur, gozden gecirilebilir.
+#   - Servisi silip yeniden kurmak gerekirse ayni sonuc cikar.
+#   - "Hangi ayari nereye yazmistim?" sorusu ortadan kalkar.
+#
+# NOT: "sync: false" olan degiskenler bu dosyaya YAZILMAZ.
+# Onlari Render panelinden bir kez elle girersin. Sebep basit:
+# DATABASE_URL bir sifre icerir ve bu dosya git'te herkese acik.
+
+services:
+  # ----------------------------------------------------------------
+  # 1) API  (Express + Prisma)
+  # ----------------------------------------------------------------
+  - type: web
+    name: developer-platform-api
+    runtime: node
+    plan: free
+    region: frankfurt # Turkiye'ye en yakin bolge -> dusuk gecikme
+    rootDir: server
+
+    # npm ci: package-lock.json'a BIREBIR uyar. "npm install"
+    # sürüm araligi icinde daha yeni bir paket cekebilir ve
+    # canlida yerelde olmayan bir hata dogurabilir.
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+
+    # Render bu adrese istek atip servisin ayakta oldugunu dogrular.
+    # Basarisiz olursa deploy'u CANLIYA ALMAZ -- eski surum calismaya
+    # devam eder. Bu satir olmasaydi bozuk bir surum yayina cikardi.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+
+      # Neon'un verdigi baglanti adresi.
+      # Panelden gir: Environment -> Add Environment Variable.
+      - key: DATABASE_URL
+        sync: false
+
+      # Render uzun ve rastgele bir deger uretir; kimse gormek
+      # zorunda kalmaz. Yerelde kullandigin anahtardan FARKLI olmasi
+      # zaten istedigimiz sey.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # CORS bu adrese izin verir. Arayuz servisinin adresi.
+      # Arayuz olusunca panelden gir: https://xxx.onrender.com
+      - key: CLIENT_URL
+        sync: false
+
+  # ----------------------------------------------------------------
+  # 2) ARAYUZ  (React + Vite, statik dosyalar)
+  # ----------------------------------------------------------------
+  - type: web
+    name: developer-platform-web
+    runtime: static
+    rootDir: client
+
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+
+    envVars:
+      # API'nin adresi. Vite bunu BUILD sirasinda paketin icine gomer;
+      # calisma aninda okunmaz. Degistirirsen yeniden deploy sart.
+      - key: VITE_API_URL
+        sync: false
+
+    # ---- SPA REWRITE KURALI ----
+    # React Router adresleri TARAYICIDA cozer. Kullanici dogrudan
+    # /projects adresini acinca (ya da sayfayi yenileyince) sunucuda
+    # boyle bir dosya YOKTUR -> 404 doner.
+    #
+    # Bu kural "hangi yol istenirse istensin index.html'i ver" der.
+    # type: rewrite (redirect DEGIL) -> adres cubugu degismez,
+    # kullanici /projects adresinde kaldigini gorur ve Router
+    # dogru sayfayi cizer.
+    #
+    # Ayni kural client/public/_redirects dosyasinda da var;
+    # o dosya Blueprint kullanilmadan elle kurulan servislerde de
+    # calisir. Ikisi cakismaz, ayni seyi soyler.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      # Vite dosya adlarina hash koyar (index-a1b2c3.js). Icerik
+      # degisince ad da degisir -- o yuzden bunlari suresiz
+      # onbellege almak guvenli ve sayfa acilisini hizlandirir.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+      # Kucuk guvenlik basliklari.
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
