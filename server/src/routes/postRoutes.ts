@@ -1,6 +1,12 @@
 import { Router } from "express";
 import * as postController from "../controllers/postController";
-import { requireAuth } from "../middlewares/authMiddleware";
+import {
+  requireAuth,
+  requireAdmin,
+  optionalAuth,
+} from "../middlewares/authMiddleware";
+import { validateBody } from "../middlewares/validate";
+import { createPostSchema, updatePostSchema } from "../validation/schemas";
 
 // ROUTE KATMANI
 // Tek isi: hangi URL + metot hangi fonksiyona gidecek.
@@ -10,14 +16,33 @@ const router = Router();
 
 // --- HERKESE ACIK (okuma) ---
 // Blog zaten yayinlanmak icin var; okumak icin giris gerekmez.
-router.get("/", postController.listPosts);
-router.get("/:slug", postController.getPost);
+//
+// optionalAuth: giris ZORUNLU degil, ama varsa kim oldugunu bilelim.
+// Controller buna bakip taslaklari gosterip gostermeyecegine karar
+// verir. Bu middleware olmadan yonetici kendi taslagini goremezdi.
+router.get("/", optionalAuth, postController.listPosts);
+router.get("/:slug", optionalAuth, postController.getPost);
 
 // --- KORUMALI (yazma) ---
-// requireAuth once calisir. next() derse controller'a gecilir,
-// demezse istek 401 ile burada biter.
-router.post("/", requireAuth, postController.createPost);
-router.put("/:slug", requireAuth, postController.updatePost);
-router.delete("/:slug", requireAuth, postController.deletePost);
+// Zincir sirasi anlamli:
+//   requireAuth  -> kimsin?        (kimlik dogrulama)
+//   requireAdmin -> yetkin var mi? (yetkilendirme)
+//   validateBody -> veri gecerli mi?
+// Herhangi biri gecmezse controller'a hic ulasilmaz.
+router.post(
+  "/",
+  requireAuth,
+  requireAdmin,
+  validateBody(createPostSchema),
+  postController.createPost,
+);
+router.put(
+  "/:slug",
+  requireAuth,
+  requireAdmin,
+  validateBody(updatePostSchema),
+  postController.updatePost,
+);
+router.delete("/:slug", requireAuth, requireAdmin, postController.deletePost);
 
 export default router;

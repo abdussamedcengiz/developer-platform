@@ -1,3 +1,5 @@
+import type { Role } from "../generated/prisma/client";
+
 // DECLARATION MERGING
 // Express'in Request tipine kendi alanimizi ekliyoruz.
 // TypeScript ayni isimli interface'leri birlestirir; boylece
@@ -6,14 +8,22 @@
 declare global {
   namespace Express {
     interface Request {
-      // requireAuth middleware'i dolduruyor.
+      // requireAuth / optionalAuth middleware'leri doldurur.
+      //
+      // Onceden burada yalnizca "userId" vardi. Rol eklenince
+      // ikisini ayri alanlarda tutmak yerine tek bir nesnede
+      // topladik: "kullanici var ama rolu yok" gibi imkansiz bir
+      // durum artik tipte de temsil edilemiyor.
+      //
       // "?" cunku middleware calismadan once bu alan YOK.
-      // Tip "string": User.id bir cuid, yani metin.
-      userId?: string
+      user?: {
+        id: string;
+        role: Role;
+      };
     }
   }
 }
 
 // Bu dosyanin bir MODUL sayilmasi icin gerekli.
 // Olmazsa "declare global" calismaz.
-export {}
+export {};

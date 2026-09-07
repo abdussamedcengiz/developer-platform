@@ -1,63 +1,60 @@
 import type { Request, Response } from "express";
-import { Prisma } from "../generated/prisma/client";
 import * as authService from "../services/authService";
+import { ApiError } from "../utils/ApiError";
+import type { LoginInput, RegisterInput } from "../validation/schemas";
+
+// Dogrulama (alan var mi, e-posta gecerli mi, sifre yeterince uzun mu)
+// artik burada degil, route'a bagli validateBody middleware'inde.
+// P2002 -> 409 cevirimi de merkezi hata isleyicide.
+// Geriye controller'in asil isi kaldi: service'i cagirip cevabi yazmak.
 
 export async function register(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const { email, password, name } = req.body as RegisterInput;
 
-  if (!email || !password) {
-    res.status(400).json({ error: "email ve password zorunludur" });
-    return;
-  }
+  const result = await authService.registerUser(email, password, name);
 
-  // En temel sifre kurali. Gercek dogrulamayi Asama 16'da zod ile yapacagiz.
-  if (password.length < 6) {
-    res.status(400).json({ error: "Şifre en az 6 karakter olmalı" });
-    return;
-  }
-
-  try {
-    const result = await authService.registerUser(email, password);
-
-    // 201 = yeni kaynak olusturuldu.
-    res.status(201).json(result);
-  } catch (error) {
-    // P2002 = unique kisiti ihlali -> bu e-posta zaten kayitli.
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      res.status(409).json({ error: "Bu e-posta zaten kayıtlı" });
-      return;
-    }
-
-    console.error(error);
-    res.status(500).json({ error: "Kayıt sırasında bir hata oluştu" });
-  }
+  // 201 = yeni kaynak olusturuldu.
+  res.status(201).json(result);
 }
 
 export async function login(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const { email, password } = req.body as LoginInput;
 
-  if (!email || !password) {
-    res.status(400).json({ error: "email ve password zorunludur" });
-    return;
+  const result = await authService.loginUser(email, password);
+
+  // null = ya kullanici yok ya sifre yanlis.
+  // Hangisi oldugunu SOYLEMIYORUZ: saldirgan hangi e-postalarin
+  // kayitli oldugunu ogrenmesin (user enumeration).
+  if (!result) {
+    throw ApiError.unauthorized("E-posta veya şifre hatalı");
   }
 
-  try {
-    const result = await authService.loginUser(email, password);
+  res.json(result);
+}
 
-    // null = ya kullanici yok ya sifre yanlis.
-    // Hangisi oldugunu SOYLEMIYORUZ: saldirgan hangi e-postalarin
-    // kayitli oldugunu ogrenmesin (user enumeration).
-    if (!result) {
-      res.status(401).json({ error: "E-posta veya şifre hatalı" });
-      return;
-    }
-
-    res.json(result);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Giriş sırasında bir hata oluştu" });
+// OTURUM DOGRULAMA
+//
+// Arayuz token'i localStorage'da tutuyor ve 7 gun gecerli.
+// Sure dolunca istemci bunu KENDI BASINA anlayamazdi: elinde bir
+// token var, "giris yapilmis" sayiyor, ama her istek 401 donuyordu.
+//
+// Bu endpoint arayuze acilista "token hala gecerli mi, ben kimim?"
+// diye sorma imkani verir. Gecersizse requireAuth 401 doner ve
+// arayuz oturumu temizler.
+export async function me(req: Request, res: Response) {
+  // requireAuth bu alani doldurdu; buraya user'siz gelinemez.
+  if (!req.user) {
+    throw ApiError.unauthorized();
   }
+
+  // Cevabin sekli /login ile AYNI olsun diye tam kullaniciyi
+  // getiriyoruz: arayuz iki yerde farkli tiplerle ugrasmasin.
+  const user = await authService.getUserById(req.user.id);
+
+  if (!user) {
+    // requireAuth ile bu cagri arasinda kullanici silinmis olabilir.
+    throw ApiError.unauthorized("Oturum artık geçerli değil");
+  }
+
+  res.json({ user });
 }
