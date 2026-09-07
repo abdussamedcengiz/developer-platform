@@ -39,6 +39,24 @@ services:
       - key: NODE_VERSION
         value: "24"
 
+      # ORTAM.
+      #
+      # Kodun uc yerinde davranisi belirler:
+      #   - Hata cevaplarina ic ayrinti EKLENMEZ (errorHandler).
+      #   - "trust proxy" ACILIR; hiz sinirlayici gercek istemci
+      #     IP'sini gorur (app.ts).
+      #   - Prisma istemcisi globalThis'e onbelleklenmez (lib/prisma.ts).
+      #
+      # Platform varsayilanina guvenmek yerine ACIKCA yaziyoruz:
+      # varsayilan bir gun degisirse guvenlik davranisi da degisirdi.
+      #
+      # YAN ETKI: "npm ci" bu deger production iken devDependencies'i
+      # KURMAZ. Bu yuzden calisma icin gereken her sey (tsx, prisma,
+      # zod, helmet) "dependencies" altinda; typescript ve test
+      # araclari devDependencies'te kalir ve yalnizca CI'da kurulur.
+      - key: NODE_ENV
+        value: production
+
       # Neon'un verdigi baglanti adresi.
       # Panelden gir: Environment -> Add Environment Variable.
       - key: DATABASE_URL

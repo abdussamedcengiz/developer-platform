@@ -1,24 +1,11 @@
 import jwt from "jsonwebtoken";
+import { env } from "../config/env";
 
-// Gizli anahtar sadece burada okunur. Iki yerde tekrarlamiyoruz.
-// Eksikse sunucu ilk saniyede, anlasilir bir mesajla durur (fail fast).
-const rawSecret = process.env.JWT_SECRET;
-
-if (!rawSecret) {
-  throw new Error("JWT_SECRET tanimli degil. server/.env dosyasini kontrol et.");
-}
-
-// DARALTILMIS DEGERI YAKALIYORUZ.
-//
-// TypeScript'in tip daraltmasi FONKSIYON SINIRINI GECMEZ:
-// yukaridaki "if" sayesinde burada rawSecret'in tipi "string",
-// ama asagidaki fonksiyonlarin ICINDE yine "string | undefined" olur.
-// Sebep: fonksiyonlar ileride, baska bir zamanda cagrilacak ve
-// derleyici o ana kadar degiskenin durumunu garanti edemez.
-//
-// Bu satir daraltilmis degeri kalici olarak "string" tipli
-// yeni bir sabite kopyalar. Artik her yerde guvenle kullanilabilir.
-const SECRET: string = rawSecret;
+// Gizli anahtar artik dogrudan process.env'den degil, dogrulanmis
+// yapilandirmadan geliyor (config/env.ts). Oradaki sema anahtarin
+// VAR oldugunu ve en az 32 karakter oldugunu garanti ettigi icin
+// burada ayrica kontrol etmeye ve tipini daraltmaya gerek kalmadi.
+const SECRET = env.JWT_SECRET;
 
 // Token'in icine ne koydugumuzu tek yerde tanimliyoruz.
 // Payload HERKES tarafindan okunabilir -> sadece userId.
