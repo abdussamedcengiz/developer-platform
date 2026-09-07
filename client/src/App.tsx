@@ -1,19 +1,37 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
+import PageFallback from "./components/PageFallback";
+
+// HERKESIN GORDUGU SAYFALAR: dogrudan import.
+// Ziyaretcinin ilk actigi sayfa bunlardan biri; ayri bir dosyaya
+// bolmek burada fayda degil, ekstra bir istek demek olurdu.
 import HomePage from "./pages/HomePage";
 import BlogPage from "./pages/BlogPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import AboutPage from "./pages/AboutPage";
-import LoginPage from "./pages/LoginPage";
-import AdminPage from "./pages/AdminPage";
-import PostFormPage from "./pages/PostFormPage";
-import AdminProjectsPage from "./pages/AdminProjectsPage";
-import ProjectFormPage from "./pages/ProjectFormPage";
 import NotFoundPage from "./pages/NotFoundPage";
+
+// YONETIM SAYFALARI: tembel yukleme (code splitting).
+//
+// Bu alti sayfayi yalnizca SITE SAHIBI kullanir, ama onceki
+// surumde herkesin indirdigi tek pakete gomuluydu: blog okumaya
+// gelen bir ziyaretci form sayfalarini, admin tablolarini ve
+// onlarin butun kodunu bosuna indiriyordu.
+//
+// React.lazy her birini ayri bir dosyaya ayirir; tarayici o
+// adrese gidildiginde indirir. Ziyaretcinin ilk yuklemesi kucululur.
+//
+// Giris sayfasi da buraya dahil: yalnizca yonetici acar.
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const PostFormPage = lazy(() => import("./pages/PostFormPage"));
+const AdminProjectsPage = lazy(() => import("./pages/AdminProjectsPage"));
+const ProjectFormPage = lazy(() => import("./pages/ProjectFormPage"));
 
 function App() {
   return (
@@ -39,67 +57,73 @@ function App() {
           <Container size="..."> secimini yapiyor. Metin sayfalari dar,
           izgara sayfalari genis olabilsin diye. */}
       <main id="icerik" className="flex-1 py-12 sm:py-16">
-        <Routes>
-          {/* --- HERKESE ACIK --- */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route path="/blog/:slug" element={<BlogDetailPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/login" element={<LoginPage />} />
+        {/* Suspense: tembel yuklenen bir sayfa indirilirken ne
+            gosterilecegini soyler. Olmazsa React hata verir.
+            Iskelet ekran, bos beyazliktan iyidir: sayfanin
+            gelmekte oldugu bellidir. */}
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            {/* --- HERKESE ACIK --- */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* --- KORUMALI --- */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/posts/new"
-            element={
-              <ProtectedRoute>
-                <PostFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/posts/:slug/edit"
-            element={
-              <ProtectedRoute>
-                <PostFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/projects"
-            element={
-              <ProtectedRoute>
-                <AdminProjectsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/projects/new"
-            element={
-              <ProtectedRoute>
-                <ProjectFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/projects/:slug/edit"
-            element={
-              <ProtectedRoute>
-                <ProjectFormPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* --- KORUMALI --- */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/posts/new"
+              element={
+                <ProtectedRoute>
+                  <PostFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/posts/:slug/edit"
+              element={
+                <ProtectedRoute>
+                  <PostFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects"
+              element={
+                <ProtectedRoute>
+                  <AdminProjectsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects/new"
+              element={
+                <ProtectedRoute>
+                  <ProjectFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects/:slug/edit"
+              element={
+                <ProtectedRoute>
+                  <ProjectFormPage />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </main>
 
       <Footer />

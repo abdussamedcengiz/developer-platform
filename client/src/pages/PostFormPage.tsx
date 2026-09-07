@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { api, ApiError } from "../services/api";
+import { api } from "../services/api";
 import Container from "../components/Container";
 import Toggle from "../components/Toggle";
+import FieldError from "../components/FieldError";
+import { toFormErrors, NO_FORM_ERRORS } from "../utils/formErrors";
 import { ArrowLeftIcon } from "../components/Icons";
 import { readingTime } from "../utils/format";
 import type { Post } from "../types/post";
@@ -25,7 +27,10 @@ function PostFormPage() {
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Hata artik tek bir metin degil: ozet + alan bazinda mesajlar.
+  // Kullanici hangi kutuyu duzeltecegini tahmin etmek zorunda kalmasin.
+  const [errors, setErrors] = useState(NO_FORM_ERRORS);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEditing);
 
   useEffect(() => {
@@ -42,7 +47,7 @@ function PostFormPage() {
         setPublished(post.published);
       } catch (err) {
         console.error(err);
-        setError("Yazı yüklenemedi.");
+        setErrors({ summary: "Yazı yüklenemedi.", fields: {} });
       } finally {
         setLoading(false);
       }
@@ -61,7 +66,7 @@ function PostFormPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setErrors(NO_FORM_ERRORS);
     setSaving(true);
 
     const body = { title, slug, excerpt: excerpt || null, content, published };
@@ -76,14 +81,7 @@ function PostFormPage() {
       navigate("/admin");
     } catch (err) {
       console.error(err);
-
-      if (err instanceof ApiError && err.status === 409) {
-        setError("Bu slug zaten kullanılıyor. Farklı bir tane dene.");
-      } else if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Kaydedilemedi.");
-      }
+      setErrors(toFormErrors(err));
     } finally {
       setSaving(false);
     }
@@ -117,9 +115,9 @@ function PostFormPage() {
         {isEditing ? "Yazıyı Düzenle" : "Yeni Yazı"}
       </h1>
 
-      {error && (
+      {errors.summary && (
         <p role="alert" className="alert-error mt-6">
-          {error}
+          {errors.summary}
         </p>
       )}
 
@@ -136,7 +134,12 @@ function PostFormPage() {
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Yazının başlığı"
               className="form-input"
+              // aria-invalid: yardimci teknolojiye "bu kutu hatali"
+              // bilgisini verir; kirmizi cerceve tek basina yetmez.
+              aria-invalid={Boolean(errors.fields.title)}
+              aria-describedby={errors.fields.title ? "title-error" : undefined}
             />
+            <FieldError id="title-error" messages={errors.fields.title} />
           </div>
 
           <div>
@@ -152,7 +155,10 @@ function PostFormPage() {
                 setSlugManuallyEdited(true);
               }}
               className="form-input font-mono text-sm"
+              aria-invalid={Boolean(errors.fields.slug)}
+              aria-describedby={errors.fields.slug ? "slug-error" : undefined}
             />
+            <FieldError id="slug-error" messages={errors.fields.slug} />
             <p className="form-hint font-mono">/blog/{slug || "..."}</p>
           </div>
 
@@ -198,7 +204,10 @@ function PostFormPage() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="form-input font-mono text-sm leading-relaxed"
+            aria-invalid={Boolean(errors.fields.content)}
+            aria-describedby={errors.fields.content ? "content-error" : undefined}
           />
+          <FieldError id="content-error" messages={errors.fields.content} />
         </div>
 
         {/* Checkbox'ta value degil CHECKED kullanilir,

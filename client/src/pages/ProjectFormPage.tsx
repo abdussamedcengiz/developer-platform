@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { api, ApiError } from "../services/api";
+import { api } from "../services/api";
 import Container from "../components/Container";
 import Toggle from "../components/Toggle";
 import { ArrowLeftIcon } from "../components/Icons";
 import type { Project } from "../types/project";
 import { slugify } from "../utils/slugify";
+import FieldError from "../components/FieldError";
+import { toFormErrors, NO_FORM_ERRORS } from "../utils/formErrors";
 
 function ProjectFormPage() {
   const { slug: editingSlug } = useParams();
@@ -23,7 +25,8 @@ function ProjectFormPage() {
 
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Alan bazinda hata gosterebilmek icin ozet + alanlar.
+  const [errors, setErrors] = useState(NO_FORM_ERRORS);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(isEditing);
 
   useEffect(() => {
@@ -45,7 +48,7 @@ function ProjectFormPage() {
         setFeatured(project.featured);
       } catch (err) {
         console.error(err);
-        setError("Proje yüklenemedi.");
+        setErrors({ summary: "Proje yüklenemedi.", fields: {} });
       } finally {
         setLoading(false);
       }
@@ -61,7 +64,7 @@ function ProjectFormPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setErrors(NO_FORM_ERRORS);
     setSaving(true);
 
     // FORM -> DATABASE: bos string'i null'a cevir.
@@ -86,14 +89,7 @@ function ProjectFormPage() {
       navigate("/admin/projects");
     } catch (err) {
       console.error(err);
-
-      if (err instanceof ApiError && err.status === 409) {
-        setError("Bu slug zaten kullanılıyor. Farklı bir tane dene.");
-      } else if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Kaydedilemedi.");
-      }
+      setErrors(toFormErrors(err));
     } finally {
       setSaving(false);
     }
@@ -127,9 +123,9 @@ function ProjectFormPage() {
         {isEditing ? "Projeyi Düzenle" : "Yeni Proje"}
       </h1>
 
-      {error && (
+      {errors.summary && (
         <p role="alert" className="alert-error mt-6">
-          {error}
+          {errors.summary}
         </p>
       )}
 
@@ -146,7 +142,12 @@ function ProjectFormPage() {
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Projenin adı"
               className="form-input"
+              // aria-invalid + aria-describedby: hatayi yalnizca
+              // renkle degil, yardimci teknolojiyle de bildiriyoruz.
+              aria-invalid={Boolean(errors.fields.title)}
+              aria-describedby={errors.fields.title ? "title-error" : undefined}
             />
+            <FieldError id="title-error" messages={errors.fields.title} />
           </div>
 
           <div>
@@ -162,7 +163,10 @@ function ProjectFormPage() {
                 setSlugManuallyEdited(true);
               }}
               className="form-input font-mono text-sm"
+              aria-invalid={Boolean(errors.fields.slug)}
+              aria-describedby={errors.fields.slug ? "slug-error" : undefined}
             />
+            <FieldError id="slug-error" messages={errors.fields.slug} />
           </div>
 
           <div>
@@ -177,6 +181,14 @@ function ProjectFormPage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ne yaptığını ve hangi teknolojileri kullandığını bir iki cümleyle anlat."
               className="form-input"
+              aria-invalid={Boolean(errors.fields.description)}
+              aria-describedby={
+                errors.fields.description ? "description-error" : undefined
+              }
+            />
+            <FieldError
+              id="description-error"
+              messages={errors.fields.description}
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { THEME_KEY } from "../constants";
+import { safeStorage } from "../utils/storage";
 
 type Theme = "light" | "dark";
 
@@ -14,7 +15,10 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     // 1) Kullanicinin daha once yaptigi secim varsa ona uy.
-    const saved = localStorage.getItem(THEME_KEY);
+    // safeStorage: gizli sekmede / depolama kapaliyken
+    // localStorage.getItem HATA FIRLATIR. Bu satir sarmalanmamis
+    // oldugu icin uygulama ilk render'da beyaz ekrana dusuyordu.
+    const saved = safeStorage.get(THEME_KEY);
     if (saved === "light" || saved === "dark") return saved;
 
     // 2) Yoksa isletim sisteminin tercihine bak.
@@ -36,7 +40,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // classList.toggle(sinif, kosul): kosul true ise ekler, false ise cikarir.
     root.classList.toggle("dark", theme === "dark");
 
-    localStorage.setItem(THEME_KEY, theme);
+    safeStorage.set(THEME_KEY, theme);
   }, [theme]);
 
   function toggleTheme() {
