@@ -200,7 +200,7 @@ Depo kökündeki `render.yaml` her iki servisi de tanımlıyor.
 |---|---|---|
 | api | `DATABASE_URL` | Neon'dan aldığın pooled adres |
 | api | `JWT_SECRET` | Render otomatik üretir — dokunma |
-| api | `CLIENT_URL` | Arayüzün adresi, örn. `https://developer-platform-web.onrender.com` |
+| api | `CLIENT_URL` | Arayüzün adresi, örn. `https://developer-platform-web.onrender.com` — **production'da zorunlu** |
 | web | `VITE_API_URL` | API'nin adresi, örn. `https://developer-platform-api.onrender.com` |
 
 İki servis birbirinin adresini istiyor; bu yüzden sıra şöyle:
@@ -208,6 +208,20 @@ Depo kökündeki `render.yaml` her iki servisi de tanımlıyor.
 1. Önce **api**'yi `DATABASE_URL` ile deploy et. Adresini not al.
 2. **web**'e `VITE_API_URL` olarak o adresi gir, deploy et. Adresini not al.
 3. **api**'ye dön, `CLIENT_URL` olarak web'in adresini gir → api yeniden deploy olur.
+
+> ### ⚠️ `CLIENT_URL` girilene kadar API açılmaz
+>
+> Bu kasıtlı. `NODE_ENV=production` iken `CLIENT_URL` tanımlı değilse
+> sunucu açılışta hata verip **durur** (`server/src/config/env.ts`).
+>
+> Sebep: CORS ayarı `origin: env.CLIENT_URL ?? true` şeklinde çalışıyor.
+> Değişken boş kalsaydı `true` devreye girer, **herhangi bir site**
+> tarayıcıdan bu API'ye istek atabilirdi — üstelik uygulama sorunsuz
+> açıldığı için kimse fark etmezdi. Yanlış yapılandırmanın sessizce
+> açık bırakması yerine gürültüyle durması tercih edildi.
+>
+> Yani 2. adımdan sonra api bir süre "başlamıyor" görünecek; 3. adımı
+> uygulayınca düzelir.
 
 > `VITE_API_URL` **build sırasında** pakete gömülür, çalışma anında okunmaz.
 > Değeri sonradan değiştirirsen arayüzü **yeniden deploy etmen** şart.

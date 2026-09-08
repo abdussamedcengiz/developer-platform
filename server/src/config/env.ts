@@ -36,7 +36,8 @@ const schema = z.object({
     .min(32, "JWT_SECRET en az 32 karakter olmali. Uretmek icin: node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\""),
 
   // CORS'un izin verecegi arayuz adresi.
-  // Gelistirmede tanimsiz -> Vite proxy kullanildigi icin gerekmez.
+  // Gelistirmede tanimsiz olabilir (Vite proxy kullaniliyor), ama
+  // production'da ZORUNLU -- asagidaki superRefine'a bak.
   CLIENT_URL: z.url().optional(),
 
   // Kayit endpoint'i. Varsayilan KAPALI.
@@ -44,7 +45,28 @@ const schema = z.object({
     .string()
     .optional()
     .transform((value) => value === "true"),
-});
+})
+  .superRefine((data, ctx) => {
+    // CORS ACIK KALMASIN.
+    //
+    // app.ts'te origin degeri "env.CLIENT_URL ?? true" idi: CLIENT_URL
+    // tanimsizsa cors paketi gelen origin'i oldugu gibi yansitir, yani
+    // HERHANGI bir site tarayicidan bu API'ye istek atabilir. Gelistirmede
+    // istenen davranis bu, ama canlida sessiz bir guvenlik acigi:
+    // degisken panelde girilmeyi unutulursa uygulama sorunsuz acilir ve
+    // korumasiz oldugunu kimse fark etmez.
+    //
+    // Yanlis yapilandirmanin acik degil HATA vermesi icin production'da
+    // CLIENT_URL zorunlu tutuluyor.
+    if (data.NODE_ENV === "production" && !data.CLIENT_URL) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["CLIENT_URL"],
+        message:
+          "NODE_ENV=production iken CLIENT_URL zorunlu. Tanimsiz birakilirsa CORS her origin'e acilir. Arayuzun adresini yaz (ornek: https://developer-platform-web.onrender.com).",
+      });
+    }
+  });
 
 const parsed = schema.safeParse(process.env);
 

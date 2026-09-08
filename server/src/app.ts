@@ -56,7 +56,11 @@ app.use(
 //
 // CANLIDA sadece kendi arayuzumuze izin veriyoruz. Aksi halde
 // herhangi bir site tarayicidan API'mize istek atabilir.
-// Gelistirmede CLIENT_URL tanimsizdir -> "true" gelen origin'i yansitir.
+//
+// "?? true" YALNIZCA gelistirme icin: orada CLIENT_URL tanimsizdir ve
+// gelen origin oldugu gibi yansitilir. Production'da bu dala hic
+// dusulmez -- config/env.ts, NODE_ENV=production iken CLIENT_URL'i
+// zorunlu tutuyor ve tanimsizsa sunucu hic acilmiyor.
 app.use(
   cors({
     origin: env.CLIENT_URL ?? true,
