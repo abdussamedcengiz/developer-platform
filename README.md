@@ -1,15 +1,51 @@
 # Developer Platform
 
+[![CI](https://github.com/abdussamedcengiz/developer-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/abdussamedcengiz/developer-platform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Kişisel developer platformu: portfolyo + blog + admin panel.
 Öğrenme amaçlı full-stack proje — hazır tema yok, her katman elle yazıldı.
+
+Rol tabanlı yetkilendirme, şema doğrulama, merkezi hata yönetimi ve
+API testleri içerir; iki servis olarak Render'a deploy edilir.
+
+## Teknolojiler
+
+| Katman | Kullanılanlar |
+|---|---|
+| Arayüz | React 19, TypeScript, Vite, Tailwind CSS 4, React Router 7 |
+| API | Node.js, Express 5, TypeScript, Zod, Helmet, express-rate-limit |
+| Veritabanı | PostgreSQL (Neon), Prisma 7 |
+| Kimlik | JWT (jsonwebtoken), bcrypt |
+| Test | Vitest, Supertest |
+| CI/CD | GitHub Actions, Render Blueprint |
+
+## Özellikler
+
+- **Blog** — yazı oluşturma, düzenleme, silme; taslak/yayın ayrımı
+- **Portfolyo** — proje kartları, öne çıkarma, görsel ve bağlantılar
+- **Admin panel** — korumalı rotalar, yazı ve proje yönetimi
+- **Kimlik doğrulama** — JWT, bcrypt ile hash'lenmiş şifreler
+- **Yetkilendirme** — `USER` / `ADMIN` rolleri; içeriğe yalnızca yönetici dokunur
+- **Koyu tema** — sistem tercihini izler, FOUC yok
+- **Erişilebilirlik** — atlama bağlantısı, odak halkaları, `prefers-reduced-motion`
+- **Arayüz durumları** — yükleniyor / hata / boş durum ekranları
 
 ## Yapı
 
 ```
 developer-platform/
-├── client/       React + TypeScript + Vite + Tailwind 4   (port 5173)
-├── server/       Node.js + Express + Prisma + PostgreSQL  (port 4000)
-└── render.yaml   Render deployment tanımı (iki servis birden)
+├── client/               React + TypeScript + Vite + Tailwind 4   (port 5173)
+├── server/               Node.js + Express + Prisma + PostgreSQL  (port 4000)
+│   ├── src/config/       Ortam değişkeni doğrulama (tek giriş noktası)
+│   ├── src/validation/   Zod şemaları — istek gövdesi sözleşmesi
+│   ├── src/middlewares/  Kimlik, yetki, doğrulama, hata, hız sınırı
+│   ├── src/routes/       URL → controller eşlemesi
+│   ├── src/controllers/  HTTP katmanı
+│   ├── src/services/     Veri katmanı (HTTP bilmez)
+│   └── src/__tests__/    Vitest + Supertest
+├── .github/workflows/    CI (tip kontrolü, test, lint, build)
+└── render.yaml           Render deployment tanımı (iki servis birden)
 ```
 
 ## Kurulum
@@ -46,9 +82,60 @@ SEED_ADMIN_PASSWORD=secme-bir-sifre npx prisma db seed
 | server | `npm run build` | `prisma generate` + `prisma migrate deploy` (canlı build adımı) |
 | server | `npm start` | Sunucuyu üretim modunda başlatır |
 | server | `npm run typecheck` | TypeScript tip hatalarını kontrol eder |
+| server | `npm test` | Vitest ile API testlerini çalıştırır |
+| server | `npm run test:watch` | Testleri izleme modunda çalıştırır |
 | client | `npm run dev` | Vite dev sunucusunu başlatır |
 | client | `npm run build` | Tip kontrolü + production build (`dist/`) |
 | client | `npm run lint` | oxlint ile statik analiz |
+
+## API
+
+Yazma işlemleri `ADMIN` rolü ister; okuma işlemleri herkese açıktır.
+
+| Metot | Adres | Erişim | Açıklama |
+|---|---|---|---|
+| GET | `/api/health` | herkes | Servis ayakta mı |
+| POST | `/api/auth/login` | herkes | Giriş, JWT döner (15 dk / 10 deneme sınırı) |
+| GET | `/api/auth/me` | giriş | Oturum hâlâ geçerli mi + kullanıcı bilgisi |
+| POST | `/api/auth/register` | herkes | **Varsayılan kapalı** (`ALLOW_REGISTRATION`) |
+| GET | `/api/posts` | herkes | Yayındaki yazılar (yönetici taslakları da görür) |
+| GET | `/api/posts/:slug` | herkes | Tek yazı (taslak yalnızca yöneticiye) |
+| POST | `/api/posts` | admin | Yazı oluştur |
+| PUT | `/api/posts/:slug` | admin | Yazı güncelle |
+| DELETE | `/api/posts/:slug` | admin | Yazı sil |
+| GET | `/api/projects` | herkes | Proje listesi |
+| GET | `/api/projects/:slug` | herkes | Tek proje |
+| POST | `/api/projects` | admin | Proje oluştur |
+| PUT | `/api/projects/:slug` | admin | Proje güncelle |
+| DELETE | `/api/projects/:slug` | admin | Proje sil |
+
+Hata cevapları her zaman JSON:
+
+```json
+{ "error": "Kısa açıklama", "details": { "slug": ["slug yalnızca kücük harf..."] } }
+```
+
+`details` yalnızca doğrulama hatalarında (400) bulunur.
+
+## Güvenlik
+
+- **Rol tabanlı yetkilendirme.** `requireAuth` kimliği, `requireAdmin` yetkiyi
+  doğrular. Geçerli bir token tek başına yazma yetkisi vermez. Rol her istekte
+  veritabanından okunur — yetki değişikliği anında geçerli olur, token'ın
+  7 günlük ömrünü beklemez.
+- **Taslak yalıtımı.** `published: false` bir erişim sınırıdır. Yetkisiz istek
+  taslağa eriştiğinde 403 değil **404** alır; 403 yazının var olduğunu ele verirdi.
+- **Şema doğrulama.** Her istek gövdesi Zod'dan geçer. Şemada olmayan alanlar
+  düşürülür — istemci `role` veya `authorId` göndererek yetki yükseltemez.
+- **Şifreler** bcrypt (cost 10) ile hash'lenir, cevaplarda asla yer almaz.
+- **Kullanıcı sayımına karşı**, e-posta bulunamadığında da sahte bir hash ile
+  karşılaştırma yapılır; cevap süresi her iki durumda aynıdır.
+- **Hız sınırı**: kimlik işlemlerinde 10 istek / 15 dk, genel API'de 300 istek / dk.
+  `trust proxy` ayarı sayesinde sayaç gerçek istemci IP'sine göre tutulur.
+- **Güvenlik başlıkları** helmet ile eklenir.
+- **Hata ayrıntıları** yalnızca `NODE_ENV=development` iken cevaba eklenir.
+- **Secret yok.** Tüm gizli değerler ortam değişkenlerinden gelir; `JWT_SECRET`
+  en az 32 karakter olmak zorunda ve kısa bir değerle sunucu hiç başlamaz.
 
 ## Arayüz notları
 
@@ -113,7 +200,7 @@ Depo kökündeki `render.yaml` her iki servisi de tanımlıyor.
 |---|---|---|
 | api | `DATABASE_URL` | Neon'dan aldığın pooled adres |
 | api | `JWT_SECRET` | Render otomatik üretir — dokunma |
-| api | `CLIENT_URL` | Arayüzün adresi, örn. `https://developer-platform-web.onrender.com` |
+| api | `CLIENT_URL` | Arayüzün adresi, örn. `https://developer-platform-web.onrender.com` — **production'da zorunlu** |
 | web | `VITE_API_URL` | API'nin adresi, örn. `https://developer-platform-api.onrender.com` |
 
 İki servis birbirinin adresini istiyor; bu yüzden sıra şöyle:
@@ -121,6 +208,20 @@ Depo kökündeki `render.yaml` her iki servisi de tanımlıyor.
 1. Önce **api**'yi `DATABASE_URL` ile deploy et. Adresini not al.
 2. **web**'e `VITE_API_URL` olarak o adresi gir, deploy et. Adresini not al.
 3. **api**'ye dön, `CLIENT_URL` olarak web'in adresini gir → api yeniden deploy olur.
+
+> ### ⚠️ `CLIENT_URL` girilene kadar API açılmaz
+>
+> Bu kasıtlı. `NODE_ENV=production` iken `CLIENT_URL` tanımlı değilse
+> sunucu açılışta hata verip **durur** (`server/src/config/env.ts`).
+>
+> Sebep: CORS ayarı `origin: env.CLIENT_URL ?? true` şeklinde çalışıyor.
+> Değişken boş kalsaydı `true` devreye girer, **herhangi bir site**
+> tarayıcıdan bu API'ye istek atabilirdi — üstelik uygulama sorunsuz
+> açıldığı için kimse fark etmezdi. Yanlış yapılandırmanın sessizce
+> açık bırakması yerine gürültüyle durması tercih edildi.
+>
+> Yani 2. adımdan sonra api bir süre "başlamıyor" görünecek; 3. adımı
+> uygulayınca düzelir.
 
 > `VITE_API_URL` **build sırasında** pakete gömülür, çalışma anında okunmaz.
 > Değeri sonradan değiştirirsen arayüzü **yeniden deploy etmen** şart.
@@ -148,6 +249,17 @@ ikincisi devreye girer. Bu kural olmadan `/projects` adresini doğrudan açmak
 `server/npm run build` içinde `prisma migrate deploy` var; **tablolar ilk
 deploy'da otomatik oluşur.** Geriye başlangıç verisi kalıyor.
 
+> ### ⚠️ Rol migration'ından sonra seed ŞART
+>
+> `20260907120000_add_user_role` migration'ı `User` tablosuna `role`
+> sütununu ekler ve **mevcut tüm kullanıcıları güvenli varsayılan olan
+> `USER`'a çeker.** Yani bu migration deploy olduktan sonra yönetici
+> hesabın giriş yapabilir ama yazı/proje kaydedemez — her yazma
+> isteğinde **403** alır.
+>
+> Düzeltmesi tek adım: aşağıdaki seed'i çalıştır. Seed hesabı
+> `ADMIN` rolüne yükseltir ve şifreni değiştirmez.
+
 Seed'i **kendi makinenden**, Neon veritabanına bağlanarak çalıştır:
 
 ```powershell
@@ -169,11 +281,14 @@ Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_PASSWORD   # temizle
 > aynı terminalde çalıştıracağın `npm run dev` de canlı veritabanına bağlanır.
 
 Seed **idempotent**: `upsert` kullanıyor, kaç kez çalıştırırsan çalıştır
-aynı sonucu verir, veri çoğaltmaz.
+aynı sonucu verir, veri çoğaltmaz. Var olan bir hesapta yalnızca rolü
+`ADMIN` yapar; şifreye dokunmaz.
 
 **Kontrol:**
 - `https://...-api.onrender.com/api/projects` → proje listesi JSON olarak geliyor.
 - Sitede `/login` → seed'de verdiğin şifreyle giriş yapılıyor.
+- Girişten sonra `/admin/posts/new` → yeni yazı **kaydedilebiliyor**
+  (403 alıyorsan seed çalışmamış demektir).
 
 ## Notlar
 
@@ -181,6 +296,8 @@ aynı sonucu verir, veri çoğaltmaz.
   sonraki ilk istek ~30–50 saniye sürer. Sonrası normal hızda.
 - **Kayıt endpoint'i kapalı.** `ALLOW_REGISTRATION` canlıda tanımlanmamalı;
   tek kişilik bir site. Kullanıcı oluşturmanın yolu seed.
+  Açılsa bile kayıt olan kullanıcı `USER` rolü alır ve içeriğe dokunamaz —
+  güvenlik artık tek bir ortam değişkenine asılı değil.
 - **`.env` asla git'e girmez.** Canlı değerler yalnızca Render panelinde durur.
 
 ## Yol haritası
@@ -200,5 +317,9 @@ aynı sonucu verir, veri çoğaltmaz.
 - [ ] 13. Dashboard / Analytics
 - [x] 14. Portfolio & tasarım
 - [ ] 15. React Native
-- [ ] 16. Testing + Security
+- [x] 16. Testing + Security *(Vitest + Supertest, rol tabanlı yetkilendirme, Zod, helmet)*
 - [x] 17. Deployment + SEO
+
+## Lisans
+
+MIT — ayrıntılar için [LICENSE](LICENSE) dosyasına bak.

@@ -33,6 +33,14 @@ function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // API'ye ulasilamadigini KAYDEDIYORUZ.
+  //
+  // Onceden hata yalnizca console'a yaziliyordu ve ekranda
+  // "Projeler yakinda burada olacak" gorunuyordu -- yani sunucu
+  // coktugunde site, icerigi hic yokmus gibi davraniyordu.
+  // Bu iki durum kullanici acisindan cok farklidir.
+  const [yuklemeHatasi, setYuklemeHatasi] = useState(false);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -52,7 +60,9 @@ function HomePage() {
       } catch (err) {
         // Veri gelmese bile tanitim bolumu gorunsun.
         // Ana sayfanin asil isi kim oldugunu anlatmak; liste ikincil.
+        // Ama listenin neden bos oldugunu da soyluyoruz.
         console.error(err);
+        setYuklemeHatasi(true);
       } finally {
         setLoading(false);
       }
@@ -216,9 +226,22 @@ function HomePage() {
                   <ProjectCard key={project.id} project={project} />
                 ))}
               </div>
+            ) : yuklemeHatasi ? (
+              // Ana sayfada buyuk bir "bos durum" kutusu asiri olurdu;
+              // tek satirlik bir not yeterli. Ama "hic proje yok" ile
+              // "listeye ulasilamadi" ayni sey degil.
+              //
+              // Ucretsiz sunucu planinda API uykuya gectigi icin bu
+              // durum gercekten yasaniyor -- kullaniciya beklemesi
+              // gerektigini soylemek, sessizce bos birakmaktan iyi.
+              <p
+                role="status"
+                className="text-sm text-slate-500 dark:text-slate-400"
+              >
+                Projeler şu anda yüklenemedi. Sunucu uyanıyor olabilir;
+                birazdan sayfayı yenilemeyi dene.
+              </p>
             ) : (
-              // Ana sayfada buyuk bir "bos durum" kutusu asiri olurdu.
-              // Tek satirlik sessiz bir not yeterli.
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Projeler yakında burada olacak.
               </p>

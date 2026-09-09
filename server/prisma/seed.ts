@@ -110,6 +110,8 @@ async function main() {
   console.log("Seed basliyor...");
 
   // --- ADMIN KULLANICISI ---
+  // Giris semasi e-postayi kucuk harfe ceviriyor; seed de ayni
+  // bicimde yazmali, yoksa olusturulan hesapla giris eslesmez.
   const email = "cengizabdussamed17@gmail.com";
   const password = process.env.SEED_ADMIN_PASSWORD;
 
@@ -122,16 +124,24 @@ async function main() {
     // upsert = varsa guncelle, yoksa olustur.
     // Seed'i iki kez calistirinca "e-posta zaten var" hatasi almamak icin.
     // Buna "idempotent" denir: kac kez calistirirsan calistir sonuc ayni.
+    // update kismi ARTIK BOS DEGIL: "role" alani sonradan eklendi
+    // ve migration mevcut tum kullanicilari guvenli varsayilan olan
+    // USER'a cekti. Seed'i tekrar calistirmak bu hesabi yeniden
+    // yonetici yapar -- migration sonrasi atilmasi gereken adim budur.
+    //
+    // Sifreyi update'te GUNCELLEMIYORUZ: seed'i baska bir sebeple
+    // calistirdiginda mevcut sifreni sessizce degistirmesin.
     await prisma.user.upsert({
       where: { email },
-      update: {},
+      update: { role: "ADMIN" },
       create: {
         email,
         name: "Abdüssamed Cengiz",
         password: await bcrypt.hash(password, 10),
+        role: "ADMIN",
       },
     });
-    console.log(`+ Kullanici hazir: ${email}`);
+    console.log(`+ Yonetici hazir: ${email}`);
   }
 
   // --- PROJELER ---

@@ -1,24 +1,12 @@
 import { prisma } from "../lib/prisma";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "../validation/schemas";
 
-type CreateProjectInput = {
-  title: string;
-  slug: string;
-  description: string;
-  imageUrl?: string;
-  githubUrl?: string;
-  demoUrl?: string;
-  featured?: boolean;
-};
-
-type UpdateProjectInput = {
-  title?: string;
-  slug?: string;
-  description?: string;
-  imageUrl?: string;
-  githubUrl?: string;
-  demoUrl?: string;
-  featured?: boolean;
-};
+// Projelerde "published" gibi bir gorunurluk alani YOK:
+// portfolyoya eklenen her proje gosterilmek icin eklenir.
+// Yaziyla arasindaki bu fark bilincli, gozden kacan bir eksik degil.
 
 export function getAllProjects() {
   return prisma.project.findMany({
@@ -29,14 +17,14 @@ export function getAllProjects() {
   });
 }
 
-export function createProject(data: CreateProjectInput) {
-  return prisma.project.create({ data });
-}
-
 export function getProjectBySlug(slug: string) {
   return prisma.project.findUnique({
     where: { slug },
   });
+}
+
+export function createProject(data: CreateProjectInput) {
+  return prisma.project.create({ data });
 }
 
 export function updateProject(slug: string, data: UpdateProjectInput) {

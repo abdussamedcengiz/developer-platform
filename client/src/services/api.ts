@@ -1,4 +1,5 @@
 import { TOKEN_KEY } from "../constants";
+import { safeStorage } from "../utils/storage";
 
 // API'nin adresi ORTAMA gore degisir:
 //
@@ -36,17 +37,53 @@ if (import.meta.env.PROD && !API_BASE) {
 export class ApiError extends Error {
   status: number;
 
-  constructor(message: string, status: number) {
+  // Sunucunun alan bazinda dondurdugu dogrulama hatalari:
+  //   { "slug": ["slug yalnizca kucuk harf..."] }
+  // Form sayfalari bunu ilgili kutunun altinda gosterebilir.
+  details?: Record<string, string[]>;
+
+  constructor(
+    message: string,
+    status: number,
+    details?: Record<string, string[]>,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.details = details;
   }
+}
+
+// OTURUM SONU BILDIRIMI
+//
+// Sorun: token 7 gun gecerli. Suresi dolunca arayuz bunu
+// ANLAMIYORDU -- elinde bir token vardi, kendini "giris yapmis"
+// sayiyor, admin sayfasini aciyor, her istek 401 donuyordu.
+// Kullanici cikip tekrar girmeyi denemedikce kilitli kaliyordu.
+//
+// Bu dosya bir component degil; useAuth cagiramaz, yonlendirme
+// yapamaz. Bu yuzden sadece HABER VERIYOR: AuthContext bu olayi
+// dinleyip oturumu temizliyor.
+//
+// CustomEvent yerine basit bir dinleyici listesi: tarayici olay
+// sistemine bagimli olmadan ayni isi goruyor ve test edilmesi kolay.
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function onUnauthorized(listener: UnauthorizedListener) {
+  unauthorizedListeners.add(listener);
+
+  // Abonelikten cikma fonksiyonu doner: useEffect'in temizleme
+  // adiminda dogrudan kullanilabilir.
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // Token'i localStorage'dan okuyoruz, context'ten DEGIL.
   // Bu dosya bir component degil -- hook cagiramaz.
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = safeStorage.get(TOKEN_KEY);
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -60,7 +97,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    // fetch YALNIZCA ag seviyesinde bir sorun varsa reddeder:
+    // internet yok, sunucu uyuyor, DNS cozulemedi.
+    // 404/500 gibi cevaplar buraya DUSMEZ, asagida ele aliniyor.
+    //
+    // 0 status'u "cevap hic gelmedi" anlaminda kullaniyoruz;
+    // cagiran taraf bunu ag hatasi olarak ayirt edebilir.
+    throw new ApiError(
+      "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.",
+      0,
+    );
+  }
 
   // 204 No Content: govde YOK. response.json() cagirirsan patlar.
   if (response.status === 204) {
@@ -70,7 +122,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new ApiError(data?.error ?? "Bir hata oluştu", response.status);
+    // Oturum gecersiz: token varken 401 aldiysak token artik
+    // ise yaramiyor demektir. Token YOKKEN gelen 401 normaldir
+    // (korumasiz bir sayfadan korumali bir istek atilmistir),
+    // o durumda kimseyi uyandirmiyoruz.
+    if (response.status === 401 && token) {
+      for (const listener of unauthorizedListeners) {
+        listener();
+      }
+    }
+
+    throw new ApiError(
+      data?.error ?? "Bir hata oluştu",
+      response.status,
+      data?.details,
+    );
   }
 
   return data as T;

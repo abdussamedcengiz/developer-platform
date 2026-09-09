@@ -12,11 +12,30 @@ datasource db {
   provider = "postgresql"
 }
 
+// Yetki seviyeleri.
+//
+// Onceden yalnizca "gecerli token" kontrol ediliyordu; token'i olan
+// HERKES yazi silebiliyordu. Guvenlik ALLOW_REGISTRATION bayraginin
+// kapali olmasina asilmisti -- bayrak bir gun acilirsa kayit olan
+// herkes yonetici olurdu.
+//
+// Rol veritabaninda durur: bir ortam degiskeninin unutulmasi
+// artik yetki acigina donusmez.
+enum Role {
+  USER // giris yapabilir, icerige DOKUNAMAZ
+  ADMIN // yazi ve proje olusturur, gunceller, siler
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
+  id       String  @id @default(cuid())
+  email    String  @unique
+  password String
+  name     String?
+
+  // Guvenli varsayilan: yeni kullanici yonetici DEGILDIR.
+  // Yonetici yapmanin tek yolu seed (prisma/seed.ts).
+  role Role @default(USER)
+
   posts     Post[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

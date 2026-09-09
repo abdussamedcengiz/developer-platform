@@ -1,0 +1,79 @@
+name: CI
+
+# Ne zaman calisir:
+#   - main'e her push'ta
+#   - main'e acilan her pull request'te
+#
+# Amac: "bende calisiyordu" durumunu ortadan kaldirmak. Tip hatasi
+# ya da kirilan bir test, canliya cikmadan ONCE burada gorunur.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  server:
+    name: API — tip kontrolu ve testler
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          # npm onbellegi: her kosuda paketleri sifirdan indirmek
+          # yerine onbellekten alir, kosu suresini belirgin kisaltir.
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # "npm ci" (install degil): package-lock.json'a BIREBIR uyar.
+      # install, surum araligi icinde daha yeni bir paket cekip
+      # yerelde olmayan bir hata dogurabilirdi.
+      - name: Bagimliliklari kur
+        run: npm ci
+
+      # Prisma istemcisi git'e girmiyor (uretilen kod), her kosuda
+      # semadan yeniden uretiliyor. Tip kontrolu buna bagimli.
+      - name: Prisma istemcisini uret
+        run: npx prisma generate
+
+      - name: Tip kontrolu
+        run: npm run typecheck
+
+      # Testler gercek bir veritabani ISTEMEZ: prisma modulu taklit
+      # ediliyor. Bu yuzden burada Postgres servisi kaldirmiyoruz --
+      # kosu saniyeler suruyor.
+      - name: Testler
+        run: npm test
+
+  client:
+    name: Arayuz — lint ve build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Bagimliliklari kur
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # "npm run build" once "tsc -b" calistirir: tip hatasi
+      # varsa build burada durur, bozuk paket uretilmez.
+      - name: Build
+        run: npm run build

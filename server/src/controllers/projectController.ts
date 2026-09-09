@@ -1,49 +1,14 @@
 import type { Request, Response } from "express";
-import { Prisma } from "../generated/prisma/client";
 import * as projectService from "../services/projectService";
+import { ApiError } from "../utils/ApiError";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "../validation/schemas";
 
-export async function createProject(req: Request, res: Response) {
-  const { title, slug, description, imageUrl, githubUrl, demoUrl, featured } =
-    req.body;
-
-  if (!title || !slug || !description) {
-    res.status(400).json({ error: "title, slug ve description zorunludur" });
-    return;
-  }
-
-  try {
-    const newProject = await projectService.createProject({
-      title,
-      slug,
-      description,
-      imageUrl,
-      githubUrl,
-      demoUrl,
-      featured,
-    });
-    res.status(201).json(newProject);
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      res.status(409).json({ error: `"${slug}" slug'i zaten kullaniliyor` });
-      return;
-    }
-
-    console.error(error);
-    res.status(500).json({ error: "Proje olusturulurken bir hata olustu" });
-  }
-}
-
-export async function listProjects(req: Request, res: Response) {
-  try {
-    const projects = await projectService.getAllProjects();
-    res.json(projects);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "proje gelirken bir hata oldu" });
-  }
+export async function listProjects(_req: Request, res: Response) {
+  const projects = await projectService.getAllProjects();
+  res.json(projects);
 }
 
 export async function getProject(
@@ -52,19 +17,23 @@ export async function getProject(
 ) {
   const { slug } = req.params;
 
-  try {
-    const project = await projectService.getProjectBySlug(slug);
+  const project = await projectService.getProjectBySlug(slug);
 
-    if (!project) {
-      res.status(404).json({ error: `"${slug}" slug'li proje bulunamadi` });
-      return;
-    }
-
-    res.json(project);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Proje getirilirken bir hata olustu" });
+  if (!project) {
+    // Onceki surumde bu mesaj "yazi bulunamadi" diyordu --
+    // post controller'dan kopyalanmis ve duzeltilmemisti.
+    throw ApiError.notFound(`"${slug}" slug'lı proje bulunamadı`);
   }
+
+  res.json(project);
+}
+
+export async function createProject(req: Request, res: Response) {
+  const data = req.body as CreateProjectInput;
+
+  const newProject = await projectService.createProject(data);
+
+  res.status(201).json(newProject);
 }
 
 export async function updateProject(
@@ -72,46 +41,11 @@ export async function updateProject(
   res: Response,
 ) {
   const { slug } = req.params;
-  const {
-    title,
-    slug: newSlug,
-    description,
-    imageUrl,
-    githubUrl,
-    demoUrl,
-    featured,
-  } = req.body;
+  const data = req.body as UpdateProjectInput;
 
-  try {
-    // Gonderilmeyen alanlar undefined kalir; Prisma onlari atlar.
-    const updated = await projectService.updateProject(slug, {
-      title,
-      slug: newSlug,
-      description,
-      imageUrl,
-      githubUrl,
-      demoUrl,
-      featured,
-    });
+  const updated = await projectService.updateProject(slug, data);
 
-    res.json(updated);
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
-        res.status(404).json({ error: `"${slug}" slug'li yazi bulunamadi` });
-        return;
-      }
-      if (error.code === "P2002") {
-        res
-          .status(409)
-          .json({ error: `"${newSlug}" slug'i zaten kullaniliyor` });
-        return;
-      }
-    }
-
-    console.error(error);
-    res.status(500).json({ error: "Proje guncellenirken bir hata olustu" });
-  }
+  res.json(updated);
 }
 
 export async function deleteProject(
@@ -120,19 +54,7 @@ export async function deleteProject(
 ) {
   const { slug } = req.params;
 
-  try {
-    await projectService.deleteProject(slug);
-    res.status(204).send();
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
-      res.status(404).json({ error: `"${slug}" slug'li yazi bulunamadi` });
-      return;
-    }
+  await projectService.deleteProject(slug);
 
-    console.error(error);
-    res.status(500).json({ error: "Proje silinirken bir hata olustu" });
-  }
+  res.status(204).send();
 }

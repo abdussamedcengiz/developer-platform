@@ -1,133 +1,96 @@
-import type { Request, Response } from 'express'
-import { Prisma } from '../generated/prisma/client'
-import * as postService from '../services/postService'
+import type { Request, Response } from "express";
+import * as postService from "../services/postService";
+import { ApiError } from "../utils/ApiError";
+import type {
+  CreatePostInput,
+  UpdatePostInput,
+} from "../validation/schemas";
 
 // CONTROLLER KATMANI
-// Gorevi: istegi anlamak, dogrulamak, service'i cagirmak, cevabi uretmek.
-// Prisma sorgusu BURADA yazilmaz -- o service'in isi.
-// Buradaki tek Prisma bilgisi, hata kodlarini HTTP kodlarina cevirmek.
+// Gorevi: istegi anlamak, service'i cagirmak, cevabi uretmek.
+//
+// Iki is BURADAN CIKTI:
+//   - Dogrulama  -> validateBody middleware'i (route'ta bagli)
+//   - Hata cevabi -> merkezi errorHandler
+//
+// Bu yuzden try/catch yok: Express 5 reddedilen promise'leri
+// kendiliginden hata isleyiciye yonlendirir. Geriye yalnizca
+// "hangi veri, kime gorunur" karari kaldi.
+
+// Taslaklari yalnizca yonetici gorebilir.
+// optionalAuth req.user'i doldurmus olabilir; dolmadiysa
+// istek anonim demektir.
+function canSeeDrafts(req: Request): boolean {
+  return req.user?.role === "ADMIN";
+}
 
 export async function listPosts(req: Request, res: Response) {
-  try {
-    const posts = await postService.getAllPosts()
-    res.json(posts)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Yazilar getirilirken bir hata olustu' })
-  }
+  const posts = await postService.getAllPosts({
+    includeDrafts: canSeeDrafts(req),
+  });
+
+  res.json(posts);
 }
 
 // Request<{ slug: string }> -> "bu route'un params'inda slug var" demek.
 // Boyle yazmazsak TypeScript req.params.slug'i "string | undefined" sayar.
 export async function getPost(req: Request<{ slug: string }>, res: Response) {
-  const { slug } = req.params
+  const { slug } = req.params;
 
-  try {
-    const post = await postService.getPostBySlug(slug)
+  const post = await postService.getPostBySlug(slug, {
+    includeDrafts: canSeeDrafts(req),
+  });
 
-    if (!post) {
-      res.status(404).json({ error: `"${slug}" slug'li yazi bulunamadi` })
-      return
-    }
-
-    res.json(post)
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Yazi getirilirken bir hata olustu' })
+  if (!post) {
+    throw ApiError.notFound(`"${slug}" slug'lı yazı bulunamadı`);
   }
+
+  res.json(post);
 }
 
 export async function createPost(req: Request, res: Response) {
-  // Alanlari tek tek aliyoruz: istemcinin gonderdigi fazlaliklar elenir.
-  const { title, slug, content, excerpt } = req.body
+  // Govde validateBody'den gecti: alanlar var, tipleri dogru,
+  // fazlaliklar dusuruldu.
+  const data = req.body as CreatePostInput;
 
   // authorId ISTEMCIDEN degil, TOKEN'dan geliyor.
-  // requireAuth middleware'i bu alani doldurdu.
-  const authorId = req.userId
+  // requireAuth + requireAdmin bu alani garanti eder; kontrol
+  // yine de duruyor cunku route'a middleware eklemeyi unutmak
+  // mumkun ve o hata sessizce gecmemeli.
+  const authorId = req.user?.id;
 
-  // requireAuth zaten garanti ediyor ama TypeScript bunu BILEMEZ:
-  // types/express.d.ts'te userId "string | undefined" olarak tanimli.
-  // Bu kontrol hem tipi daraltir hem de route'a yanlislikla
-  // requireAuth eklemeyi unutursak bizi korur.
   if (!authorId) {
-    res.status(401).json({ error: 'Giriş yapmalısınız' })
-    return
+    throw ApiError.unauthorized();
   }
 
-  // Dogrulama controller'in isi: "gelen istek gecerli mi?" sorusu HTTP'ye ait.
-  if (!title || !slug || !content) {
-    res.status(400).json({ error: 'title, slug ve content zorunludur' })
-    return
-  }
+  const newPost = await postService.createPost(data, authorId);
 
-  try {
-    const newPost = await postService.createPost(
-      { title, slug, content, excerpt },
-      authorId,
-    )
-    res.status(201).json(newPost)
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      res.status(409).json({ error: `"${slug}" slug'i zaten kullaniliyor` })
-      return
-    }
-
-    console.error(error)
-    res.status(500).json({ error: 'Yazi olusturulurken bir hata olustu' })
-  }
+  // 201 = yeni kaynak olusturuldu.
+  res.status(201).json(newPost);
 }
 
-export async function updatePost(req: Request<{ slug: string }>, res: Response) {
-  const { slug } = req.params
-  const { title, slug: newSlug, content, excerpt, published } = req.body
+export async function updatePost(
+  req: Request<{ slug: string }>,
+  res: Response,
+) {
+  const { slug } = req.params;
+  const data = req.body as UpdatePostInput;
 
-  try {
-    // Gonderilmeyen alanlar undefined kalir; Prisma onlari atlar.
-    const updated = await postService.updatePost(slug, {
-      title,
-      slug: newSlug,
-      content,
-      excerpt,
-      published,
-    })
+  // Var olmayan bir slug'da Prisma P2025 firlatir; merkezi
+  // hata isleyici onu 404'e cevirir. Cakisan slug ise P2002 -> 409.
+  const updated = await postService.updatePost(slug, data);
 
-    res.json(updated)
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') {
-        res.status(404).json({ error: `"${slug}" slug'li yazi bulunamadi` })
-        return
-      }
-      if (error.code === 'P2002') {
-        res.status(409).json({ error: `"${newSlug}" slug'i zaten kullaniliyor` })
-        return
-      }
-    }
-
-    console.error(error)
-    res.status(500).json({ error: 'Yazi guncellenirken bir hata olustu' })
-  }
+  res.json(updated);
 }
 
-export async function deletePost(req: Request<{ slug: string }>, res: Response) {
-  const { slug } = req.params
+export async function deletePost(
+  req: Request<{ slug: string }>,
+  res: Response,
+) {
+  const { slug } = req.params;
 
-  try {
-    await postService.deletePost(slug)
-    res.status(204).send()
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2025'
-    ) {
-      res.status(404).json({ error: `"${slug}" slug'li yazi bulunamadi` })
-      return
-    }
+  await postService.deletePost(slug);
 
-    console.error(error)
-    res.status(500).json({ error: 'Yazi silinirken bir hata olustu' })
-  }
+  // 204 = basarili, donecek govde yok.
+  res.status(204).send();
 }
